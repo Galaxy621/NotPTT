@@ -164,9 +164,11 @@ class Client:
             del self.ConnectedServer.Clients[self.ID]
 
     def parse(self, message):
+        data_objects = []
+
         try:
-            loded = json.loads(message.decode())
-            data = ClientData.from_dict(loded)
+            loded = json.loads(f"[{message.decode()}]")
+            data_objects = [ClientData.from_dict(data) for data in loded]
 
         except Exception as e:
 
@@ -180,100 +182,101 @@ class Client:
         
         self.ParseFails = 0
 
-        if self.ConnectedServer.Anticheat:
-            data.Sprite = PTUtils.anticheat(data.Sprite)
+        for data in data_objects:
+            if self.ConnectedServer.Anticheat:
+                data.Sprite = PTUtils.anticheat(data.Sprite)
 
-        self.Paused = False
+            self.Paused = False
 
-        # print(f"Client {self.ID} sent data: ({data.Type}) {data.__dict__}")
-        # print(loded)
+            # print(f"Client {self.ID} sent data: ({data.Type}) {data.__dict__}")
+            # print(loded)
 
-        match data.Type:
-            case MessageType.ImsgLogin.value:
-                print("Login message received")
+            match data.Type:
+                case MessageType.ImsgLogin.value:
+                    print("Login message received")
 
-                if self.LoggedIn:
-                    print("Client already logged in")
-                    return
-                
-                if self.ConnectedServer.check_key(data.Key):
-                    self.Admin = True
+                    if self.LoggedIn:
+                        print("Client already logged in")
+                        return
+                    
+                    if self.ConnectedServer.check_key(data.Key):
+                        self.Admin = True
 
-                if self.ConnectedServer.check_banned(self.Ip256):
-                    self.close(MessageType.OmsgKick, "You are banned.")
-                    return
+                    if self.ConnectedServer.check_banned(self.Ip256):
+                        self.close(MessageType.OmsgKick, "You are banned.")
+                        return
 
-                if data.Ver != self.ConnectedServer.Version:
-                    self.close(MessageType.OmsgKick, "Your client is outdated.")
-                    return
-                
-                data.Name = PTUtils.clean_name(data.Name, self.ConnectedServer.BadWords)
+                    if data.Ver != self.ConnectedServer.Version:
+                        self.close(MessageType.OmsgKick, "Your client is outdated.")
+                        return
+                    
+                    data.Name = PTUtils.clean_name(data.Name, self.ConnectedServer.BadWords)
 
-                # check if name is taken
-                with self.ConnectedServer.ClientMutex:
-                    if self.Admin:
-                        for id, client in self.ConnectedServer.Clients.items():
-                            if client.Name == data.Name and client.ID != self.ID:
-                                self.ConnectedServer.ClientMutex.release()
-                                client.close(MessageType.MsgNone, "")
-                                return
-                    else:
-                        nm = data.Name
+                    # check if name is taken
+                    with self.ConnectedServer.ClientMutex:
+                        if self.Admin:
+                            for id, client in self.ConnectedServer.Clients.items():
+                                if client.Name == data.Name and client.ID != self.ID:
+                                    self.ConnectedServer.ClientMutex.release()
+                                    client.close(MessageType.MsgNone, "")
+                                    return
+                        else:
+                            nm = data.Name
 
-                        while True:
-                            for _, client in self.ConnectedServer.Clients.items():
-                                if client.Name == nm:
-                                    nm += str(random.randint(0, 9))
+                            while True:
+                                for _, client in self.ConnectedServer.Clients.items():
+                                    if client.Name == nm:
+                                        nm += str(random.randint(0, 9))
+                                        break
+                                else:
+                                    data.Name = nm
                                     break
-                            else:
-                                data.Name = nm
-                                break
 
-                self.Data = data
-                self.Name = data.Name
-                self.Lobby = data.Lobby
-                self.LoggedIn = True
-                self.Color = data.Color
+                    self.Data = data
+                    self.Name = data.Name
+                    self.Lobby = data.Lobby
+                    self.LoggedIn = True
+                    self.Color = data.Color
 
-                print(f"Client {self.ID} logged in as {self.Name} ({self.Ip256})")
-                self.ConnectedServer.broadcast(f"{self.Name} has entered the tower!", self.Lobby)
-                self.server_pm(f"Welcome to NotPTT, {self.Name}! Use /help for a list of commands.")
+                    print(f"Client {self.ID} logged in as {self.Name} ({self.Ip256})")
+                    self.ConnectedServer.broadcast(f"{self.Name} has entered the tower!", self.Lobby)
+                    self.server_pm(f"Welcome to NotPTT, {self.Name}! Use /help for a list of commands.")
 
-            case MessageType.ImsgDefault.value:
-                if not self.LoggedIn:
-                    return
+                case MessageType.ImsgDefault.value:
+                    if not self.LoggedIn:
+                        return
+                    
+                    self.Data = data
                 
-                self.Data = data
-            
-            case MessageType.ImsgPaused.value:
-                if not self.LoggedIn:
-                    return
-                
-                self.Paused = True
+                case MessageType.ImsgPaused.value:
+                    if not self.LoggedIn:
+                        return
+                    
+                    self.Paused = True
 
-            case MessageType.ImsgMessage.value:
-                if not self.LoggedIn:
-                    return
-                
-                if data.Msg == "":
-                    return
-                
-                if data.Msg.startswith("/"):
-                    self.command(data.Msg)
-                    return
-                
-                data.Msg = PTUtils.clean(data.Msg, 256, self.ConnectedServer.BadWords)
-                
-                with self.ConnectedServer.ClientMutex:
-                    for id, client in self.ConnectedServer.Clients.items():
-                        if client.Lobby == self.Lobby and client.Active and client.LoggedIn:
-                            client.pm(Message(
-                                Body = data.Msg,
-                                Username = self.Name,
-                                Id = self.ID
-                            ))
-                        # else:
-                        #     print(f"Client {self.ID} tried to send a message to {client.ID} but they are not in the same lobby.")
+                case MessageType.ImsgMessage.value:
+                    if not self.LoggedIn:
+                        return
+                    
+                    if data.Msg == "":
+                        return
+                    
+                    if data.Msg.startswith("/"):
+                        self.command(data.Msg)
+                        return
+                    
+                    data.Msg = PTUtils.clean(data.Msg, 256, self.ConnectedServer.BadWords)
+                    
+                    with self.ConnectedServer.ClientMutex:
+                        for id, client in self.ConnectedServer.Clients.items():
+                            if client.Lobby == self.Lobby and client.Active and client.LoggedIn:
+                                client.pm(Message(
+                                    Body = data.Msg,
+                                    Username = self.Name,
+                                    Id = self.ID
+                                ))
+                            # else:
+                            #     print(f"Client {self.ID} tried to send a message to {client.ID} but they are not in the same lobby.")
 
 
     def command(self, msg: str):
