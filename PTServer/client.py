@@ -167,8 +167,13 @@ class Client:
         data_objects = []
 
         try:
-            loded = json.loads(f"[{message.decode()}]")
-            data_objects = [ClientData.from_dict(data) for data in loded]
+            json_datas = message.decode().split("}{")
+            json_datas[0] = json_datas[0] + "}"
+            json_datas[-1] = "{" + json_datas[-1]
+
+            for json_data in json_datas:
+                loded = json.loads(json_data)
+                data_objects.append(ClientData.from_dict(loded))
 
         except Exception as e:
 
@@ -372,7 +377,7 @@ class Client:
                 
                 self.Name = name
                 self.server_pm(f"Your name is now {self.Name}.")
-                
+
                 # with self.ConnectedServer.ClientMutex:
                 #     if self.Admin:
                 #         for _, client in self.ConnectedServer.Clients.items():
