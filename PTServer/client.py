@@ -199,10 +199,7 @@ class Client:
 
             match data.Type:
                 case MessageType.ImsgLogin.value:
-                    print("Login message received")
-
                     if self.LoggedIn:
-                        print("Client already logged in")
                         return
                     
                     if self.ConnectedServer.check_key(data.Key):
