@@ -58,7 +58,7 @@ class Server:
 
         try:
             sock.bind((self.Host, self.Port))
-            sock.listen()
+            sock.listen(1)
         except Exception as e:
             print(f"Failed to bind to {self.Host}:{self.Port}: {e}")
             self.Up = False
