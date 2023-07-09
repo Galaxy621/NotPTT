@@ -172,6 +172,7 @@ class Client:
             json_datas[-1] = "{" + json_datas[-1]
 
             for json_data in json_datas:
+                print(json_data)
                 loded = json.loads(json_data)
                 data_objects.append(ClientData.from_dict(loded))
 
