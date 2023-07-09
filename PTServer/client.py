@@ -116,7 +116,7 @@ class Client:
                             Room = client.Data.Room,
                             Sprite = client.Data.Sprite,
                             Frame = client.Data.Frame,
-                            Direction = client.Data.Direction,
+                            Direction = client.Data.Dir,
                             Palette = client.Data.Palette,
                             PaletteSprite = client.Data.PaletteSprite,
                             PaletteTexture = client.Data.PaletteTexture,
