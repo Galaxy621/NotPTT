@@ -68,9 +68,13 @@ class Client:
             if not self.Active:
                 return
             
-            raw = self.Conn.recv(2048)
-            if not raw:
-                self.close(MessageType.MsgNone, "No data received.")
+            try:
+                raw = self.Conn.recv(2048)
+                if not raw:
+                    self.close(MessageType.MsgNone, "No data received.")
+                    return
+            except Exception as e:
+                self.close(MessageType.MsgNone, f"{e}")
                 return
 
             self.parse(raw)

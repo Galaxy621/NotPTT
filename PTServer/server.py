@@ -43,7 +43,8 @@ class Server:
                         to_remove.append(client.ID)
 
             for id in to_remove:
-                self.remove_client(id)
+                client = self.Clients[id]
+                client.close(MessageType.OmsgDisconnect, "Timed out")
 
 
     def start(self):

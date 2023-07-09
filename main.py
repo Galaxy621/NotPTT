@@ -5,7 +5,7 @@ from PTConfig import Config
 if __name__ == '__main__':
     # Create Server
     config = Config(
-        Host="localhost",
+        Host="",
         Port=6666,
         Timeout=10,
         MaxPlayers=128,
