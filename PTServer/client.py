@@ -170,7 +170,7 @@ class Client:
 
         except Exception as e:
 
-            print(f"Client {self.ID} failed to parse message: {e}")
+            print(f"Client {self.ID} failed to parse message ({message}): {e}")
 
             self.ParseFails += 1
             if self.ParseFails > 10:
@@ -412,7 +412,10 @@ class Client:
 
     def direct(self, msg: CompactMessage):
         data = json.dumps(msg.to_json()).encode()
-        self.Conn.sendall(data)
+        try:
+            self.Conn.sendall(data)
+        except:
+            pass
 
     def pm(self, msg: Message):
         msg.Mid = random.randint(0, 1000000)
