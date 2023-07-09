@@ -168,8 +168,9 @@ class Client:
 
         try:
             json_datas = message.decode().split("}{")
-            json_datas[0] = json_datas[0] + "}"
-            json_datas[-1] = "{" + json_datas[-1]
+            if len(json_datas) > 1:
+                json_datas[0] = json_datas[0] + "}"
+                json_datas[-1] = "{" + json_datas[-1]
 
             for json_data in json_datas:
                 print(json_data)
