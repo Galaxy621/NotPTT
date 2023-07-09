@@ -213,13 +213,13 @@ class Client:
                     data.Name = PTUtils.clean_name(data.Name, self.ConnectedServer.BadWords)
 
                     # check if name is taken
+                    should_close = None
+
                     with self.ConnectedServer.ClientMutex:
                         if self.Admin:
                             for id, client in self.ConnectedServer.Clients.items():
                                 if client.Name == data.Name and client.ID != self.ID:
-                                    self.ConnectedServer.ClientMutex.release()
-                                    client.close(MessageType.MsgNone, "")
-                                    return
+                                    should_close = client
                         else:
                             nm = data.Name
 
@@ -231,6 +231,9 @@ class Client:
                                 else:
                                     data.Name = nm
                                     break
+
+                    if should_close:
+                        should_close.close(MessageType.MsgNone, "")
 
                     self.Data = data
                     self.Name = data.Name
