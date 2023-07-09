@@ -52,7 +52,7 @@ class CompactClient:
             "room": self.Room,
             "sprite": self.Sprite,
             "frame": self.Frame,
-            "direction": self.Direction,
+            "dir": self.Direction,
             "palette": self.Palette,
             "paletteSprite": self.PaletteSprite,
             "paletteTexture": self.PaletteTexture,
