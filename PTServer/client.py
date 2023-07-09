@@ -349,28 +349,50 @@ class Client:
                 if name == self.Name:
                     return
                 
+                should_close = None
                 with self.ConnectedServer.ClientMutex:
                     if self.Admin:
-                        for _, client in self.ConnectedServer.Clients.items():
+                        for id, client in self.ConnectedServer.Clients.items():
                             if client.Name == name and client.ID != self.ID:
-                                self.ConnectedServer.ClientMutex.release()
-                                client.close(MessageType.MsgNone, "")
-                                return
-                            
+                                should_close = client
                     else:
                         nm = name
 
-                        while name_finding := True:
+                        while True:
                             for _, client in self.ConnectedServer.Clients.items():
                                 if client.Name == nm:
                                     nm += str(random.randint(0, 9))
                                     break
                             else:
                                 name = nm
-                                name_finding = False
-                        
+                                break
+
+                if should_close:
+                    should_close.close(MessageType.MsgNone, "")                        
+                
                 self.Name = name
                 self.server_pm(f"Your name is now {self.Name}.")
+                
+                # with self.ConnectedServer.ClientMutex:
+                #     if self.Admin:
+                #         for _, client in self.ConnectedServer.Clients.items():
+                #             if client.Name == name and client.ID != self.ID:
+                #                 self.ConnectedServer.ClientMutex.release()
+                #                 client.close(MessageType.MsgNone, "")
+                #                 return
+                            
+                #     else:
+                #         nm = name
+
+                #         while name_finding := True:
+                #             for _, client in self.ConnectedServer.Clients.items():
+                #                 if client.Name == nm:
+                #                     nm += str(random.randint(0, 9))
+                #                     break
+                #             else:
+                #                 name = nm
+                #                 name_finding = False
+
 
             case "ban":
                 if not self.Admin:
