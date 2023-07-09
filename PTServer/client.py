@@ -116,7 +116,7 @@ class Client:
                             Room = client.Data.Room,
                             Sprite = client.Data.Sprite,
                             Frame = client.Data.Frame,
-                            Direction = client.Data.Dir,
+                            Dir = client.Data.Dir,
                             Palette = client.Data.Palette,
                             PaletteSprite = client.Data.PaletteSprite,
                             PaletteTexture = client.Data.PaletteTexture,
@@ -445,7 +445,7 @@ class ClientData:
 
     Sprite: str = ""
     Frame: int = 0
-    Direction: int = 0
+    Dir: int = 0
     Palette: int = 0
     PaletteSprite: str = ""
     PaletteTexture: str = ""
@@ -466,7 +466,7 @@ class ClientData:
             "room": self.Room,
             "sprite": self.Sprite,
             "frame": self.Frame,
-            "direction": self.Direction,
+            "dir": self.Dir,
             "palette": self.Palette,
             "paletteSprite": self.PaletteSprite,
             "paletteTexture": self.PaletteTexture,
