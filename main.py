@@ -6,7 +6,7 @@ if __name__ == '__main__':
     # Create Server
     config = Config(
         Host="",
-        Port=6666,
+        Port=25565,
         Timeout=10,
         MaxPlayers=128,
         MaxConnections=3,
@@ -17,4 +17,6 @@ if __name__ == '__main__':
     )
 
     server = PTServer.Server(config=config)
+    server.load_plugins("plugins")
     server.start()
+

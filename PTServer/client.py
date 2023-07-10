@@ -9,6 +9,8 @@ import threading
 from dataclasses import dataclass
 
 import PTUtils
+import PTCommand
+
 from . import server
 from .messages import CompactClient, CompactMessage, MessageType, Message
 
@@ -160,8 +162,9 @@ class Client:
         self.Conn.close()
         self.Active = False
 
-        with self.ConnectedServer.ClientMutex:
-            del self.ConnectedServer.Clients[self.ID]
+        if self.ConnectedServer.Clients.get(self.ID, None):
+            with self.ConnectedServer.ClientMutex:
+                del self.ConnectedServer.Clients[self.ID]
 
     def parse(self, message):
         data_objects = []
@@ -173,7 +176,11 @@ class Client:
                 json_datas[-1] = "{" + json_datas[-1]
 
             for json_data in json_datas:
-                loded = json.loads(json_data)
+                try:
+                    loded = json.loads(json_data)
+                except:
+                    continue
+
                 data_objects.append(ClientData.from_dict(loded))
 
         except Exception as e:
@@ -290,6 +297,22 @@ class Client:
         cmd = arr[0]
         args = arr[1:]
 
+        # First check if there's a custom implementation
+        for command in self.ConnectedServer.Commands:
+            if command.Name == cmd:
+                failed = command._run(args, self)
+
+                if failed:
+                    match failed:
+                        case (False, PTCommand.FailedCommand.InvalidArgs):
+                            self.server_pm(f"Usage: /{command.Name} {' '.join(command.Args)}")
+                        case (False, PTCommand.FailedCommand.NotAdmin):
+                            self.server_pm("You are not an admin.")
+                        case (False, PTCommand.FailedCommand.FailureExecuting):
+                            self.server_pm("Failed to execute command.")
+
+                return
+
         match cmd:
             case "help":
                 self.server_pm("Command Help:")
@@ -306,6 +329,44 @@ class Client:
                 self.server_pm("  /who - Lists all users")
                 self.server_pm("  /pm <name> <msg> - Sends a private message to a user")
                 self.server_pm("  /nick <name> - Changes your name")
+
+                # Custom commands
+                if len(self.ConnectedServer.Commands) > 0:
+                    self.server_pm("The following custom commands are available:")
+                    for command in self.ConnectedServer.Commands:
+                        if command.IsAdmin and not self.Admin:
+                            continue
+
+                        self.server_pm(f"  {command}")
+
+            case "login":
+                # allow admins to login using a username and password
+                if len(args) < 2:
+                    self.server_pm("Usage: /login <username> <password>")
+                    return
+                
+                username = args[0]
+                password = args[1]
+
+                if not self.ConnectedServer.auth_admin(username, password):
+                    self.server_pm("Incorrect username or password.")
+                    return
+                
+                self.Admin = True
+                self.nickname(username)
+
+                self.server_pm("You are now logged in.")
+
+            case "password":
+                if not self.Admin:
+                    return
+                
+                if len(args) < 1:
+                    self.server_pm("Usage: /password <password>")
+                    return
+                
+                password = " ".join(args)
+                self.ConnectedServer.change_password(self.Name, password)
 
             case "who":
                 with self.ConnectedServer.ClientMutex:
@@ -343,58 +404,16 @@ class Client:
                     self.server_pm(f"User '{name}' not found.")
 
             case "nick":
+                if self.Admin:
+                    self.server_pm("You cannot change your name as an admin.")
+                    return
+
                 if len(args) < 1:
                     self.server_pm("Usage: /nick <name>")
                     return
                 
-                name = PTUtils.clean_name(args[0], self.ConnectedServer.BadWords)
-
-                if name == self.Name:
-                    return
-                
-                should_close = None
-                with self.ConnectedServer.ClientMutex:
-                    if self.Admin:
-                        for id, client in self.ConnectedServer.Clients.items():
-                            if client.Name == name and client.ID != self.ID:
-                                should_close = client
-                    else:
-                        nm = name
-
-                        while True:
-                            for _, client in self.ConnectedServer.Clients.items():
-                                if client.Name == nm:
-                                    nm += str(random.randint(0, 9))
-                                    break
-                            else:
-                                name = nm
-                                break
-
-                if should_close:
-                    should_close.close(MessageType.MsgNone, "")                        
-                
-                self.Name = name
+                self.nickname(args[0])
                 self.server_pm(f"Your name is now {self.Name}.")
-
-                # with self.ConnectedServer.ClientMutex:
-                #     if self.Admin:
-                #         for _, client in self.ConnectedServer.Clients.items():
-                #             if client.Name == name and client.ID != self.ID:
-                #                 self.ConnectedServer.ClientMutex.release()
-                #                 client.close(MessageType.MsgNone, "")
-                #                 return
-                            
-                #     else:
-                #         nm = name
-
-                #         while name_finding := True:
-                #             for _, client in self.ConnectedServer.Clients.items():
-                #                 if client.Name == nm:
-                #                     nm += str(random.randint(0, 9))
-                #                     break
-                #             else:
-                #                 name = nm
-                #                 name_finding = False
 
 
             case "ban":
@@ -434,8 +453,50 @@ class Client:
                 msg = " ".join(args)
                 self.ConnectedServer.announce(f"{self.Name}: {msg}")
 
+            case "reload":
+                if not self.Admin:
+                    return
+                
+                if not len(args) == 1:
+                    self.server_pm("Usage: /reload <plugin path>")
+                    return
+                
+                path = args[0]
+                self.ConnectedServer.Commands.clear()
+                self.ConnectedServer.load_plugins(path)
+                
+
             case _:
                 self.server_pm(f"Unknown command: {cmd}")
+
+    def nickname(self, name: str):
+        name = PTUtils.clean_name(name, self.ConnectedServer.BadWords)
+
+        if name == self.Name:
+            return
+        
+        should_close = None
+        with self.ConnectedServer.ClientMutex:
+            if self.Admin:
+                for id, client in self.ConnectedServer.Clients.items():
+                    if client.Name == name and client.ID != self.ID:
+                        should_close = client
+            else:
+                nm = name
+
+                while True:
+                    for _, client in self.ConnectedServer.Clients.items():
+                        if client.Name == nm:
+                            nm += str(random.randint(0, 9))
+                            break
+                    else:
+                        name = nm
+                        break
+
+        if should_close:
+            should_close.close(MessageType.MsgNone, "")                        
+        
+        self.Name = name
 
     def append(self, msg: CompactMessage):
         with self.QueueMutex:

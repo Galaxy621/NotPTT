@@ -13,4 +13,4 @@ class Config:
     Keys: list[str]
     Bans: list[str]
     BadWords: list[str]
-    
+
