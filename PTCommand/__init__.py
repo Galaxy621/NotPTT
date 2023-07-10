@@ -1,23 +1,3 @@
-"""
-    Example:
-        import PTServer
-        from PTCommand import Command
-        from PTConfig import Config
-
-        server = PTServer.Server(Config())
-        server.start()
-
-        class MyCommand(Command):
-            def __init__(self):
-                super().__init__("mycommand", "My command", ["arg1", "arg2"])
-
-            def run(self, args: list[str]):
-                print("My command was run with args: " + str(args))
-
-        server.register_command(MyCommand())
-
-"""
-
 from __future__ import annotations
 
 from enum import Enum
